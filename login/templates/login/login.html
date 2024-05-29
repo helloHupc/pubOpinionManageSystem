@@ -53,5 +53,15 @@
     <script src="https://cdn.bootcss.com/popper.js/1.15.0/umd/popper.js"></script>
     <script src="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
 
+  <script>
+      //验证码动态刷新实现
+      $('.captcha').click(function () {
+          $.getJSON("/captcha/refresh/", function (result) {
+              $('.captcha').attr('src', result['image_url']);
+              $('#id_captcha_0').val(result['key'])
+          });
+      });
+  </script>
+
   </body>
 </html>
