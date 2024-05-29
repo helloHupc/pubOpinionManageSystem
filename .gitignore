@@ -5,3 +5,12 @@ settings.py
 db.sqlite3
 pubOpinionManageSystem/__pycache__/
 login/__pycache__/
+
+# 忽略 node_modules 目录
+node_modules/
+# 忽略编译生成的文件和目录
+frontend/dist/
+frontend/.nuxt/
+# 忽略 IDE 或编辑器生成的文件
+frontend/.idea/
+frontend/.vscode/

@@ -15,9 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 from login import views
 from django.urls import include
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,4 +29,7 @@ urlpatterns = [
     path('logout/', views.logout),
     path('captcha/', include('captcha.urls')),
     path('confirm/', views.user_confirm),
+
+    path('api/login', views.LoginView.as_view(), name='api-login'),
+    path('', views.index, name='index'),  # 配置首页路径
 ]
