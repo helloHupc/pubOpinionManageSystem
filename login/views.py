@@ -6,11 +6,29 @@ import hashlib
 import datetime
 from django.conf import settings
 
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse
+from django.views import View
+import json
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+
+class LoginView(View):
+    def post(self, request, *args, **kwargs):
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        # user = authenticate(request, username=username, password=password)
+        if username is not None:
+            # login(request, user)
+            return JsonResponse({'message': 'Login successful','data':data})
+        else:
+            return JsonResponse({'message': 'Invalid credentials'}, status=400)
+
+
+@ensure_csrf_cookie
 def index(request):
-    if not request.session.get('is_login', None):
-        return redirect('/login/')
-    return render(request, 'login/index.html')
+    return render(request, 'index.html')
 
 
 def login(request):
