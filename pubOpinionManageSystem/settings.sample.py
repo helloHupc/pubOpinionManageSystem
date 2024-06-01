@@ -25,7 +25,7 @@ SECRET_KEY = 'xxx'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -39,19 +39,21 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'login',
     'captcha',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'login_register.urls'
+ROOT_URLCONF = 'pubOpinionManageSystem.urls'
 
 TEMPLATES = [
     {
@@ -70,7 +72,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'login_register.wsgi.application'
+CORS_ORIGIN_ALLOW_ALL = True  # 或者指定允许的域名
 
 
 # Database
