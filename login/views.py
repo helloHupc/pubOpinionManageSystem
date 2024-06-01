@@ -11,7 +11,10 @@ from django.http import JsonResponse
 from django.views import View
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie
+import uuid
 
+def generate_uuid():
+    return uuid.uuid4()
 
 class LoginView(View):
     def post(self, request, *args, **kwargs):
@@ -21,7 +24,8 @@ class LoginView(View):
         # user = authenticate(request, username=username, password=password)
         if username is not None:
             # login(request, user)
-            return JsonResponse({'message': 'Login successful','data':data})
+            new_uuid = generate_uuid()
+            return JsonResponse({'message': 'Login successful', 'data': data, 'token': new_uuid})
         else:
             return JsonResponse({'message': 'Invalid credentials'}, status=400)
 
