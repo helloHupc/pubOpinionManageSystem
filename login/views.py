@@ -25,7 +25,7 @@ class LoginView(View):
         if username is not None:
             # login(request, user)
             new_uuid = generate_uuid()
-            return JsonResponse({'message': 'Login successful', 'data': data, 'token': new_uuid})
+            return JsonResponse({'message': 'Login successful', 'data': data, 'token': new_uuid, 'code': 0})
         else:
             return JsonResponse({'message': 'Invalid credentials'}, status=400)
 
