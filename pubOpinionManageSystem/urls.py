@@ -22,14 +22,15 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.index),
-    path('index/', views.index),
-    path('login/', views.login),
-    path('register/', views.register),
-    path('logout/', views.logout),
-    path('captcha/', include('captcha.urls')),
-    path('confirm/', views.user_confirm),
+    # path('', views.index),
+    # path('index/', views.index),
+    # # path('login/', views.login),
+    # path('register/', views.register),
+    # path('logout/', views.logout),
+    # path('captcha/', include('captcha.urls')),
+    # path('confirm/', views.user_confirm),
 
-    path('api/login', views.LoginView.as_view(), name='api-login'),
+    path('api/login', views.login),
+    path('api/register', views.register),
     path('', views.index, name='index'),  # 配置首页路径
 ]
