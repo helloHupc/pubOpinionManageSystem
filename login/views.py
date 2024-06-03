@@ -16,19 +16,6 @@ import uuid
 def generate_uuid():
     return uuid.uuid4()
 
-class LoginView(View):
-    def post(self, request, *args, **kwargs):
-        data = json.loads(request.body)
-        username = data.get('username')
-        password = data.get('password')
-        # user = authenticate(request, username=username, password=password)
-        if username is not None:
-            # login(request, user)
-            new_uuid = generate_uuid()
-            return JsonResponse({'message': 'Login successful', 'data': data, 'token': new_uuid, 'code': 0})
-        else:
-            return JsonResponse({'message': 'Invalid credentials'}, status=400)
-
 
 @ensure_csrf_cookie
 def index(request):
@@ -36,83 +23,60 @@ def index(request):
 
 
 def login(request):
-    if request.session.get('is_login', None):  # 不允许重复登录
-        return redirect('/index/')
-    if request.method == 'POST':
-        login_form = forms.UserForm(request.POST)
-        message = '请检查填写的内容！'
-        if login_form.is_valid():
-            username = login_form.cleaned_data.get('username')
-            password = login_form.cleaned_data.get('password')
+    data = json.loads(request.body)
+    username = data.get('username')
+    password = data.get('password')
+    encrypt_password = hash_code(password)
 
-            try:
-                user = models.User.objects.get(name=username)
-            except :
-                message = '用户不存在！'
-                return render(request, 'login/login.html', locals())
+    check_user_info = models.User.objects.filter(name=username).values().first()
+    if not check_user_info or encrypt_password != check_user_info['password']:
+        return api_response("用户名或者密码错误！", 110001)
 
-            if not user.has_confirmed:
-                message = '该用户还未经过邮件确认！'
-                return render(request, 'login/login.html', locals())
-
-            if user.password == hash_code(password):
-                request.session['is_login'] = True
-                request.session['user_id'] = user.id
-                request.session['user_name'] = user.name
-                return redirect('/index/')
-            else:
-                message = '密码不正确！'
-                return render(request, 'login/login.html', locals())
-        else:
-            return render(request, 'login/login.html', locals())
-
-    login_form = forms.UserForm()
-    return render(request, 'login/login.html', locals())
+    token = generate_uuid()
+    return api_response("登录成功！", 200, '', token)
 
 
+# 用户注册
 def register(request):
-    if request.session.get('is_login', None):
-        return redirect('/index/')
+    data = json.loads(request.body)
+    username = data.get('username')
+    password1 = data.get('password1')
+    password2 = data.get('password2')
+    email = data.get('email')
 
-    if request.method == 'POST':
-        register_form = forms.RegisterForm(request.POST)
-        message = "请检查填写的内容！"
-        if register_form.is_valid():
-            username = register_form.cleaned_data.get('username')
-            password1 = register_form.cleaned_data.get('password1')
-            password2 = register_form.cleaned_data.get('password2')
-            email = register_form.cleaned_data.get('email')
-            sex = register_form.cleaned_data.get('sex')
+    if password1 != password2:
+        return api_response("两次输入的密码不同", 100001)
 
-            if password1 != password2:
-                message = '两次输入的密码不同！'
-                return render(request, 'login/register.html', locals())
-            else:
-                same_name_user = models.User.objects.filter(name=username)
-                if same_name_user:
-                    message = '用户名已经存在'
-                    return render(request, 'login/register.html', locals())
-                same_email_user = models.User.objects.filter(email=email)
-                if same_email_user:
-                    message = '该邮箱已经被注册了！'
-                    return render(request, 'login/register.html', locals())
+    same_name_user = models.User.objects.filter(name=username)
+    if same_name_user:
+        return api_response("用户名已经存在", 100002)
 
-                new_user = models.User()
-                new_user.name = username
-                new_user.password = hash_code(password1)
-                new_user.email = email
-                new_user.sex = sex
-                new_user.save()
+    same_email_user = models.User.objects.filter(email=email)
+    if same_email_user:
+        return api_response("该邮箱已经被注册了！", 100003)
 
-                code = make_confirm_string(new_user)
-                send_email(email, code)
+    new_user = models.User()
+    new_user.name = username
+    new_user.password = hash_code(password1)
+    new_user.email = email
+    new_user.save()
 
-                message = '请前往邮箱进行确认！'
-                return render(request, 'login/confirm.html', locals())
-        else:
-            return render(request, 'login/register.html', locals())
-    register_form = forms.RegisterForm()
-    return render(request, 'login/register.html', locals())
+    code = make_confirm_string(new_user)
+    # send_email(email, code)
+    return api_response("请前往邮箱进行确认！", 200)
+
+
+def api_response(message, code, data='', token=''):
+    re_data = {
+        'message': message,
+        'code': code,
+    }
+    if data:
+        re_data['data'] = data
+    if token:
+        re_data['token'] = token
+
+    return JsonResponse(re_data)
 
 
 def logout(request):
