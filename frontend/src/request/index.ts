@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 //创建axios实例
 const service = axios.create({
@@ -16,12 +17,23 @@ service.interceptors.request.use((config)=>{
 })
 //响应拦截
 service.interceptors.response.use((res)=>{
+    console.log('interceptors res data',res.data)
     const code:number = res.data.code
     if(code != 200 && code != 0){
+        ElMessage({
+            message: res.data.message,
+            grouping: false,
+            type: 'error',
+          })
         return Promise.reject(res.data)
     }
     return res.data
 },(error)=>{
-    console.log(error)
+    ElMessage({
+        message: '接口异常',
+        grouping: false,
+        type: 'error',
+      })
+    console.log('error',error)
 })
 export default service
