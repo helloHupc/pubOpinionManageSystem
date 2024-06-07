@@ -24,6 +24,7 @@ service.interceptors.response.use((res)=>{
             message: res.data.message,
             grouping: false,
             type: 'error',
+            duration: 2000
           })
         return Promise.reject(res.data)
     }
@@ -33,6 +34,7 @@ service.interceptors.response.use((res)=>{
         message: '接口异常',
         grouping: false,
         type: 'error',
+        duration: 2000
       })
     console.log('error',error)
 })

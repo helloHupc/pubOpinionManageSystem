@@ -76,6 +76,7 @@ export default defineComponent({
               message: res.message,
               grouping: false,
               type: 'success',
+              duration: 2000
             })
             //保存token
             localStorage.setItem("token",res.token)
@@ -111,18 +112,11 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-  .login-box {
-    width: 100%;
-    height: 100%;
-    background: url("../../assets/login_bg.jpg") no-repeat center center;
-    background-size: cover;
-    text-align: center;
-    padding: 1px;
   .demo-ruleForm{
     width: 500px;
-    margin: 200px auto;
+    margin: 100px auto;
     background: #ffffff;
-    padding: 40px;
+    padding: 30px;
     border-radius: 5px;
   }
   .common-btn{
@@ -134,5 +128,5 @@ export default defineComponent({
   h2{
     margin-bottom: 20px;
   }
-}
+
 </style>
