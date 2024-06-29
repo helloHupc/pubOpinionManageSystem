@@ -6,29 +6,7 @@ import hashlib
 import datetime
 from django.conf import settings
 
-from django.contrib.auth import authenticate, login
-from django.http import JsonResponse
-from django.views import View
-import json
 from django.views.decorators.csrf import ensure_csrf_cookie
-import uuid
-
-def generate_uuid():
-    return uuid.uuid4()
-
-class LoginView(View):
-    def post(self, request, *args, **kwargs):
-        data = json.loads(request.body)
-        username = data.get('username')
-        password = data.get('password')
-        # user = authenticate(request, username=username, password=password)
-        if username is not None:
-            # login(request, user)
-            new_uuid = generate_uuid()
-            return JsonResponse({'message': 'Login successful', 'data': data, 'token': new_uuid, 'code': 0})
-        else:
-            return JsonResponse({'message': 'Invalid credentials'}, status=400)
-
 
 @ensure_csrf_cookie
 def index(request):
@@ -46,7 +24,7 @@ def login(request):
             password = login_form.cleaned_data.get('password')
 
             try:
-                user = models.User.objects.get(name=username)
+                user = models.UserProfile.objects.get(username=username)
             except :
                 message = '用户不存在！'
                 return render(request, 'login/login.html', locals())
@@ -58,7 +36,7 @@ def login(request):
             if user.password == hash_code(password):
                 request.session['is_login'] = True
                 request.session['user_id'] = user.id
-                request.session['user_name'] = user.name
+                request.session['user_name'] = user.username
                 return redirect('/index/')
             else:
                 message = '密码不正确！'
@@ -88,17 +66,17 @@ def register(request):
                 message = '两次输入的密码不同！'
                 return render(request, 'login/register.html', locals())
             else:
-                same_name_user = models.User.objects.filter(name=username)
+                same_name_user = models.UserProfile.objects.filter(username=username)
                 if same_name_user:
                     message = '用户名已经存在'
                     return render(request, 'login/register.html', locals())
-                same_email_user = models.User.objects.filter(email=email)
+                same_email_user = models.UserProfile.objects.filter(email=email)
                 if same_email_user:
                     message = '该邮箱已经被注册了！'
                     return render(request, 'login/register.html', locals())
 
-                new_user = models.User()
-                new_user.name = username
+                new_user = models.UserProfile()
+                new_user.username = username
                 new_user.password = hash_code(password1)
                 new_user.email = email
                 new_user.sex = sex
