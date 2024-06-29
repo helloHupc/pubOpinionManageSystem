@@ -10,3 +10,16 @@ export function login(data:loginData){
         data
     })
 }
+
+interface registerData{
+    username:string,
+    password1:string,
+    password2:string,
+}
+export function register(data:registerData){
+    return service({
+        url:'/register',
+        method:'post',
+        data
+    })
+}

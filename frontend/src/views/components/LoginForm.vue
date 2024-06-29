@@ -2,7 +2,7 @@
   <div class="login-box">
     <el-form
         ref="ruleFormRef"
-        :model="ruleForm"
+        :model="formData"
         status-icon
         :rules="rules"
         label-width="80px"
@@ -13,18 +13,18 @@
       <h2>舆情管理系统-登录</h2>
 
       <el-form-item label="账号" prop="username">
-        <el-input v-model="ruleForm.username" autocomplete="off"/>
+        <el-input v-model="formData.username" autocomplete="off"/>
       </el-form-item>
       <el-form-item label="密码" prop="password">
         <el-input
-            v-model="ruleForm.password"
+            v-model="formData.password"
             type="password"
             autocomplete="off"
             show-password
         />
       </el-form-item>
       <el-form-i class="forget-password">
-        <a href="javascript:void (0)" class="el-link el-link--primary" @click="resetForm(ruleFormRef)"><span class="el-link__inner">重置</span></a>
+        <a href="javascript:void (0)" class="el-link el-link--primary" @click="resetForm()"><span class="el-link__inner">重置</span></a>
       </el-form-i>
       <el-form-item style="margin-top: 20px;">
         <el-button type="primary" class="common-btn" @click="submitForm(ruleFormRef)">登录</el-button>
@@ -43,12 +43,16 @@ import {LoginData} from "@/type/login";
 import type { FormInstance, FormRules } from 'element-plus'
 import {login} from "@/request/api";
 import {useRouter} from "vue-router";
+import { ElMessage } from 'element-plus';
 
 
 export default defineComponent({
   name: 'LoginForm',
   setup() {
-    const data = reactive(new LoginData())
+    const formData = reactive({
+        username: "",
+        password: ""
+    })
 
     const rules = {
         username: [
@@ -66,13 +70,19 @@ export default defineComponent({
       if (!formEl) return
       formEl.validate((valid) => {
         if (valid) {
-          login(data.ruleForm).then((res)=>{
-            console.log("res",res)
+          login(formData).then((res)=>{
+            console.log("login res",res)
+            ElMessage({
+              message: res.message,
+              grouping: false,
+              type: 'success',
+              duration: 2000
+            })
             //保存token
-            localStorage.setItem("token",res.data.token)
+            localStorage.setItem("token",res.token)
             //跳转
             router.push({ name: 'Home' })
-          })
+          }).catch((e)=>{})
         } else {
           console.log('error submit!')
           return false
@@ -81,15 +91,15 @@ export default defineComponent({
     }
 
     const resetForm = () => {
-      data.ruleForm.username = "";
-      data.ruleForm.password = "";
+      formData.username = "";
+      formData.password = "";
     }
 
     const labelPosition = "top"
     const size = "large"
 
     return {
-      ...toRefs(data),
+      formData,
       rules,
       resetForm,
       ruleFormRef,
@@ -102,18 +112,11 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-  .login-box {
-    width: 100%;
-    height: 100%;
-    background: url("../../assets/login_bg.jpg") no-repeat center center;
-    background-size: cover;
-    text-align: center;
-    padding: 1px;
   .demo-ruleForm{
     width: 500px;
-    margin: 200px auto;
+    margin: 100px auto;
     background: #ffffff;
-    padding: 40px;
+    padding: 30px;
     border-radius: 5px;
   }
   .common-btn{
@@ -125,5 +128,5 @@ export default defineComponent({
   h2{
     margin-bottom: 20px;
   }
-}
+
 </style>
