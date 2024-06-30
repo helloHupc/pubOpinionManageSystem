@@ -53,9 +53,79 @@ class UserInfoView(View):
         res_data = {
             'userId': user_id,
             'username': username,
+            'avatar': 'https://hupc-blog-photo.oss-cn-beijing.aliyuncs.com/wp-content/uploads/2024/06/hacker.png',
             'roles': ["ROOT"]
         }
 
         return JsonResponse({'msg': 'success', 'data': res_data, 'code': 0})
+
+
+class MenuRoutesView(View):
+    def get(self, request):
+
+        res_routes = [
+            {
+              'path': "/doc",
+              'component': "Layout",
+              'name': "/doc",
+              'meta': {
+                'title': "平台文档",
+                'icon': "document",
+                'hidden': False,
+                'roles': ["ADMIN"],
+              },
+              'children': [
+                {
+                  'path': "internal-doc",
+                  'component': "demo/internal-doc",
+                  'name': "InternalDoc",
+                  'meta': {
+                    'title': "平台文档(内嵌)",
+                    'icon': "document",
+                    'hidden': False,
+                    'roles': ["ADMIN"],
+                  },
+                },
+                {
+                  'path': "https://juejin.cn/post/7228990409909108793",
+                  'name': "Https://juejin.cn/post/7228990409909108793",
+                  'meta': {
+                    'title': "平台文档(外链)",
+                    'icon': "link",
+                    'hidden': False,
+                    'roles': ["ADMIN"],
+                  },
+                },
+              ],
+            },
+            {
+              'path': "/key-word",
+              'component': "Layout",
+              'name': "KeyWord",
+              'redirect': "/key-word/page",
+              'meta': {
+                'title': "关键词",
+                'icon': "document",
+                'hidden': False,
+                'roles': ["ADMIN"],
+              },
+              'children': [
+                {
+                  'path': "page",
+                  'component': "key-word/page",
+                  'name': "KeyWordPage",
+                  'meta': {
+                    'title': "关键词管理",
+                    'icon': "document",
+                    'hidden': False,
+                    'roles': ["ADMIN"],
+                  },
+                },
+              ],
+            },
+        ]
+
+        return JsonResponse({'msg': 'success', 'data': res_routes, 'code': 0})
+
 
 
