@@ -13,6 +13,7 @@ class UserProfile(AbstractUser):
     )
 
     username = models.CharField(max_length=128, unique=True)
+    nickname = models.CharField(max_length=128, default="")
     password = models.CharField(max_length=256)
     avatar = models.CharField(max_length=256, default="")
     roles = models.CharField(max_length=128, default="")

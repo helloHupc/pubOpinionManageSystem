@@ -29,7 +29,7 @@ export default defineComponent({
 .container{
     width: 100%;
     height: 100%;
-    background: url("../assets/login_bg.jpg") no-repeat center center;
+    background: self("../assets/login_bg.jpg") no-repeat center center;
     background-size: cover;
     text-align: center;
     padding: 1px;
