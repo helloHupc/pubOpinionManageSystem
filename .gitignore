@@ -5,6 +5,7 @@ settings.py
 db.sqlite3
 pubOpinionManageSystem/__pycache__/
 login/__pycache__/
+api/__pycache__/
 
 # 忽略 node_modules 目录
 node_modules/
