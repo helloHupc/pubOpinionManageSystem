@@ -460,7 +460,7 @@ class CrawlerView(View):
                 add_data['key_word'] = key_word
                 add_data['key_word_id'] = key_word_id
 
-                if not BlogInfo.objects.filter(blog_id=blog_id).exists():
+                if not BlogInfo.objects.filter(blog_id=blog_id).exists() and add_data.get('blog_content'):
                     BlogInfo.objects.create(**add_data)
 
                 print('=' * 66)
@@ -469,7 +469,7 @@ class CrawlerView(View):
                     pageA = html.xpath('//*[@id="pl_feedlist_index"]/div[5]/div/a')[0].text
                     print(pageA)
                     pageCount = pageCount + 1
-                elif pageCount == 3:
+                elif pageCount == 10:
                     print('没有下一页了')
                     break
                 else:
