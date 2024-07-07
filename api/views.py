@@ -18,6 +18,11 @@ import re
 import time
 import random
 from html.parser import HTMLParser
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+import pandas as pd
+from tqdm import tqdm
+import os
 
 
 def generate_uuid():
@@ -75,66 +80,65 @@ class UserInfoView(View):
 
 class MenuRoutesView(View):
     def get(self, request):
-
         res_routes = [
             {
-              'path': "/doc",
-              'component': "Layout",
-              'name': "/doc",
-              'meta': {
-                'title': "平台文档",
-                'icon': "document",
-                'hidden': False,
-                'roles': ["ADMIN"],
-              },
-              'children': [
-                {
-                  'path': "internal-doc",
-                  'component': "demo/internal-doc",
-                  'name': "InternalDoc",
-                  'meta': {
-                    'title': "平台文档(内嵌)",
+                'path': "/doc",
+                'component': "Layout",
+                'name': "/doc",
+                'meta': {
+                    'title': "平台文档",
                     'icon': "document",
                     'hidden': False,
                     'roles': ["ADMIN"],
-                  },
                 },
-                {
-                  'path': "https://juejin.cn/post/7228990409909108793",
-                  'name': "Https://juejin.cn/post/7228990409909108793",
-                  'meta': {
-                    'title': "平台文档(外链)",
-                    'icon': "link",
-                    'hidden': False,
-                    'roles': ["ADMIN"],
-                  },
-                },
-              ],
+                'children': [
+                    {
+                        'path': "internal-doc",
+                        'component': "demo/internal-doc",
+                        'name': "InternalDoc",
+                        'meta': {
+                            'title': "平台文档(内嵌)",
+                            'icon': "document",
+                            'hidden': False,
+                            'roles': ["ADMIN"],
+                        },
+                    },
+                    {
+                        'path': "https://juejin.cn/post/7228990409909108793",
+                        'name': "Https://juejin.cn/post/7228990409909108793",
+                        'meta': {
+                            'title': "平台文档(外链)",
+                            'icon': "link",
+                            'hidden': False,
+                            'roles': ["ADMIN"],
+                        },
+                    },
+                ],
             },
             {
-              'path': "/key-word",
-              'component': "Layout",
-              'name': "KeyWord",
-              'redirect': "/key-word/page",
-              'meta': {
-                'title': "关键词",
-                'icon': "document",
-                'hidden': False,
-                'roles': ["ADMIN"],
-              },
-              'children': [
-                {
-                  'path': "page",
-                  'component': "key-word/page",
-                  'name': "KeyWordPage",
-                  'meta': {
-                    'title': "关键词管理",
+                'path': "/key-word",
+                'component': "Layout",
+                'name': "KeyWord",
+                'redirect': "/key-word/page",
+                'meta': {
+                    'title': "关键词",
                     'icon': "document",
                     'hidden': False,
                     'roles': ["ADMIN"],
-                  },
                 },
-              ],
+                'children': [
+                    {
+                        'path': "page",
+                        'component': "key-word/page",
+                        'name': "KeyWordPage",
+                        'meta': {
+                            'title': "关键词管理",
+                            'icon': "document",
+                            'hidden': False,
+                            'roles': ["ADMIN"],
+                        },
+                    },
+                ],
             },
             {
                 'path': "/data-manage",
@@ -217,7 +221,7 @@ class KeyWordView(View):
 
     def get_list(self, request):
         data = json.loads(request.body)
-        print('data',data)
+        print('data', data)
 
         page = data.get('pageNum', 1)
         page_size = data.get('pageSize', 10)
@@ -258,7 +262,6 @@ class KeyWordView(View):
         }
 
         return api_return_success(res_data)
-
 
     def get_info(self, request):
         data = json.loads(request.body)
@@ -352,7 +355,6 @@ class CrawlerView(View):
         else:
             return api_return_error('请求错误！', 110001)
 
-
     def crawl_data_by_key_word(self, request):
         data = json.loads(request.body)
         print('data', data)
@@ -432,19 +434,19 @@ class CrawlerView(View):
                 match = re.search(pattern, weibo_url)
                 if match:
                     user_id = match.group(1)
-                    print('user_id',user_id)
+                    print('user_id', user_id)
                     add_data['author_id'] = user_id
 
                 # 发微博的时间
                 publish_time = html.xpath('//div[@class="card-wrap"][' + str(
-                        i) + ']/div[@class="card"]/div[1]/div[2]/div[@class="from"]/a')[0].text.strip()
-                print('publish_time',publish_time)
+                    i) + ']/div[@class="card"]/div[1]/div[2]/div[@class="from"]/a')[0].text.strip()
+                print('publish_time', publish_time)
                 add_data['publish_time'] = publish_time
 
                 # 微博内容
                 blog_content = html.xpath('//div[@class="card-wrap"][' + str(
                     i) + ']/div[@class="card"]/div[1]/div[2]/p')[0].text.strip()
-                print('blog_content',blog_content)
+                print('blog_content', blog_content)
                 add_data['blog_content'] = blog_content
 
                 # 点赞数
@@ -479,7 +481,6 @@ class CrawlerView(View):
             except:
                 print('没有下一页了')
                 break
-
 
     def get_blog_list(self, request):
         data = json.loads(request.body)
@@ -526,7 +527,20 @@ class CrawlerView(View):
             blog_info_page = paginator.page(paginator.num_pages)
 
         data_list = []
+        model, tokenizer = self.init_llm_model()
         for info in blog_info_page:
+            print('info.sentiment', info.sentiment)
+            print('info.blog_content', info.blog_content)
+            blog_sentiment = info.sentiment
+            if (info.sentiment is None or info.sentiment.strip() == '') and info.blog_content is not None:
+                blog_sentiment = self.analyze_sentiment(info.blog_content, model, tokenizer)
+
+                # 将sentiment写入数据库中
+                blog_obj = BlogInfo.objects.get(id=info.id)
+                blog_obj.sentiment = data.get('sentiment', blog_sentiment)
+                # 保存对象
+                blog_obj.save()
+
             data_list.append({
                 'id': info.id,
                 'key_word': info.key_word,
@@ -538,6 +552,7 @@ class CrawlerView(View):
                 'like_count': info.like_count,
                 'publish_time': info.publish_time,
                 'blog_content': info.blog_content,
+                'blog_sentiment': blog_sentiment,
                 'createTime': info.c_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'updateTime': info.u_time.strftime('%Y-%m-%d %H:%M:%S'),
             })
@@ -550,6 +565,67 @@ class CrawlerView(View):
 
         return api_return_success(res_data)
 
+    # 初始化模型
+    def init_llm_model(self):
+        # 定义保存模型的文件夹路径
+        save_trained_folder = "./save_trained_model/WeiboSentiment-Qwen2-1.5B-Instruct"
 
+        # 加载本地微调好的模型和分词器
+        print('save_trained_folder', save_trained_folder)
+        # 检查路径是否存在，如果不存在则创建
+        if not os.path.exists(save_trained_folder):
+            print('save_trained_folder not exists')
 
+        print('gpu is_available', torch.cuda.is_available())
 
+        model = AutoModelForCausalLM.from_pretrained(save_trained_folder)
+        tokenizer = AutoTokenizer.from_pretrained(save_trained_folder)
+
+        # 移动模型到GPU（如果可用）
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+
+        return model, tokenizer
+
+    # 调用llm预测微博博文情感
+    def analyze_sentiment(self, sentence, model, tokenizer):
+
+        # 将句子转化为 DataFrame
+        sentence_df = pd.DataFrame({"text": [sentence]})
+
+        # 应用 generate_test_prompt 函数格式化句子
+        formatted_sentence = sentence_df.apply(self.generate_test_prompt, axis=1)
+
+        # 将格式化后的句子转化为 DataFrame，模拟 x_test 的格式
+        formatted_sentence_df = pd.DataFrame(formatted_sentence, columns=["text"])
+
+        # 使用加载的模型进行预测
+        predictions = self.predict(formatted_sentence_df, model, tokenizer)
+        print("Predictions:", predictions)
+        return predictions
+
+    # 定义预测函数
+    def predict(self, test_data, model, tokenizer):
+        y_pred = []
+        for i in tqdm(range(len(test_data))):
+            prompt = test_data.iloc[i]["text"]
+            input_ids = tokenizer(prompt, return_tensors="pt").to("cuda")
+            outputs = model.generate(**input_ids, max_new_tokens=1, temperature=0.001, do_sample=True)
+            result = tokenizer.decode(outputs[0])
+            answer = result.split("=")[-1].lower()
+            if "positive" in answer:
+                return "positive"
+            elif "negative" in answer:
+                return "negative"
+            else:
+                return "none"
+
+    def generate_test_prompt(self, data_point):
+        return f"""
+                Analyze the sentiment of the text enclosed in square brackets, 
+                determine if it is positive, or negative, and return the answer as 
+                the corresponding sentiment label "positive" or "negative"
+
+                [{data_point["text"]}] = 
+
+                """.strip()

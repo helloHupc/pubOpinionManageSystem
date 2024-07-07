@@ -36,12 +36,13 @@ class BlogInfo(models.Model):
     like_count = models.CharField(max_length=256, default='')
     publish_time = models.CharField(max_length=256)
     blog_content = models.TextField(null=True, blank=True)
+    sentiment = models.CharField(max_length=256, default='')
     type = models.CharField(max_length=30, default='weibo')
     c_time = models.DateTimeField(auto_now_add=True)
     u_time = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.blog_id
+        return self.blog_content
 
     class Meta:
 
