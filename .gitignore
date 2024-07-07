@@ -16,3 +16,4 @@ frontend/.idea/
 frontend/.vscode/
 
 save_trained_model
+.gitattributes
