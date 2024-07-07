@@ -11,11 +11,10 @@ admin.site.index_title = '舆情管理后台'
 class UserProfileAdmin(UserAdmin):
     fieldsets = (None, {
         'fields': (
-            'username', 'password', 'email', 'roles', 'sex', 'is_superuser', 'is_staff',
+            'username', 'password', 'email', 'nickname', 'sex',
             'is_active')}),
     readonly_fields = ('password',)
     list_per_page = 10
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
-admin.site.register(ConfirmString)
