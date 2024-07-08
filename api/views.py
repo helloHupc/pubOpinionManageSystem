@@ -1,28 +1,25 @@
 import uuid
 import json
 from django.views import View
-from django.http import JsonResponse
 from login.models import UserProfile
-from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from api.utils import encrypt_user_id, api_return_error, api_return_success
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.db.models.functions import Trunc
+from django.db import models
 from django.utils.dateparse import parse_datetime
 from api.models import KeyWord, BlogInfo
-from django.core.serializers import serialize
 import requests
 from lxml import etree
-import csv
 import re
-import time
-import random
-from html.parser import HTMLParser
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import pandas as pd
 from tqdm import tqdm
 import os
+from django.utils import timezone
+from datetime import timedelta, datetime
 
 
 def generate_uuid():
@@ -81,40 +78,6 @@ class UserInfoView(View):
 class MenuRoutesView(View):
     def get(self, request):
         res_routes = [
-            {
-                'path': "/doc",
-                'component': "Layout",
-                'name': "/doc",
-                'meta': {
-                    'title': "平台文档",
-                    'icon': "document",
-                    'hidden': False,
-                    'roles': ["ADMIN"],
-                },
-                'children': [
-                    {
-                        'path': "internal-doc",
-                        'component': "demo/internal-doc",
-                        'name': "InternalDoc",
-                        'meta': {
-                            'title': "平台文档(内嵌)",
-                            'icon': "document",
-                            'hidden': False,
-                            'roles': ["ADMIN"],
-                        },
-                    },
-                    {
-                        'path': "https://juejin.cn/post/7228990409909108793",
-                        'name': "Https://juejin.cn/post/7228990409909108793",
-                        'meta': {
-                            'title': "平台文档(外链)",
-                            'icon': "link",
-                            'hidden': False,
-                            'roles': ["ADMIN"],
-                        },
-                    },
-                ],
-            },
             {
                 'path': "/key-word",
                 'component': "Layout",
@@ -375,7 +338,7 @@ class CrawlerView(View):
 
     def get_weibo_topic(self, url, key_word, key_word_id):
         headers_com = {
-            'Cookie': 'UOR=www.baidu.com,weibo.com,www.baidu.com; SINAGLOBAL=2231131084364.6147.1691322221755; SCF=Agl4_AP0sUSdjP_kMa2XS8k0pgE1RWAjtrfBVaY8k1PouM_Xqv9a7wGYqTn1Gq3nYQQnucccf79-7YJ9kRxdp74.; SUB=_2A25LhsHADeRhGeRG6lYT8SnNyjuIHXVo-lsIrDV8PUNbmtANLW7ikW9NTfOQzxjxFQeVB3IuVZf-r-Vi-Lq8rp5_; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WWB-A_3WoZKGd4zMIkHDoTj5JpX5KzhUgL.FozReKBEeKMpeKM2dJLoIXnLxKBLB.BL1K-LxK-LBKBL1hBLxK-LB-qLB.zLxKqL1h.LB.-LxKBLBonL1h5LxKML1h.L1hMLxK-LB--L1h.LxK-LB--L1h2t; ALF=02_1722433168; _s_tentry=-; Apache=5033914820214.327.1719841393049; ULV=1719841393051:5:1:1:5033914820214.327.1719841393049:1708779649720',
+            'Cookie': 'SINAGLOBAL=7156742576788.246.1720268063899; ALF=1722860382; SUB=_2A25LjUYODeRhGeBN7FQY9SvLyjyIHXVo48fGrDV8PUJbkNANLXHYkW1NRD6xD3jFsW2dvujqOWF1j0AykYPZYhIj; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WhE0IkibUYGcoJEh7a4Rs6S5JpX5KzhUgL.Foq0S0q4SK-NeK52dJLoIEQLxKnL1KqL1hMLxKnL1KqL1hMLxKBLBonL1h5LxKMLB-eL1K2Eeh5Neh-t; _s_tentry=-; Apache=8446034582190.39.1720448560517; ULV=1720448560571:2:2:1:8446034582190.39.1720448560517:1720268063934; XSRF-TOKEN=Pg6KrIpzlZcRzF6I53I18-s-; WBPSESS=L4L_z_JzzEZTdbPW6DHu3qcO6gE3Lb6vR3pkRK01o1MF6kV4yDsMIIZ2Efr1mLZ5b-0wFOGyRoNSsuA4kxbnxSLEXNbk4l7MIaE0MPgZoj0N1n7HTWY4hPdHoaH2KGyb',
             'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0"
         }
         page = 0
@@ -462,7 +425,9 @@ class CrawlerView(View):
                 add_data['key_word'] = key_word
                 add_data['key_word_id'] = key_word_id
 
-                if not BlogInfo.objects.filter(blog_id=blog_id).exists() and add_data.get('blog_content'):
+                check_exist = BlogInfo.objects.filter(blog_id=blog_id).exists()
+
+                if not check_exist and add_data.get('blog_content') and len(blog_content) > 3:
                     BlogInfo.objects.create(**add_data)
 
                 print('=' * 66)
@@ -472,14 +437,14 @@ class CrawlerView(View):
                     print(pageA)
                     pageCount = pageCount + 1
                 elif pageCount == 10:
-                    print('没有下一页了')
+                    print('抓取完 没有下一页了')
                     break
                 else:
                     pageA = html.xpath('//*[@id="pl_feedlist_index"]/div[5]/div/a[2]')[0].text
                     pageCount = pageCount + 1
                     print(pageA)
             except:
-                print('没有下一页了')
+                print('except 没有下一页了')
                 break
 
     def get_blog_list(self, request):
@@ -490,8 +455,8 @@ class CrawlerView(View):
         page_size = data.get('pageSize', 10)
         # 获取搜索条件
         key_word_id = data.get('keywords')
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        start_time = data.get('startTime')
+        end_time = data.get('endTime')
         author_name = data.get('author_name')
 
         # 初始化查询集
@@ -527,12 +492,20 @@ class CrawlerView(View):
             blog_info_page = paginator.page(paginator.num_pages)
 
         data_list = []
-        model, tokenizer = self.init_llm_model()
+        need_llm = False
+        for item in blog_info_page:
+            if item.sentiment is None or item.sentiment.strip() == '':
+                need_llm = True
+                break
+
+        if need_llm:
+            model, tokenizer = self.init_llm_model()
+
         for info in blog_info_page:
             print('info.sentiment', info.sentiment)
             print('info.blog_content', info.blog_content)
             blog_sentiment = info.sentiment
-            if (info.sentiment is None or info.sentiment.strip() == '') and info.blog_content is not None:
+            if need_llm and info.blog_content is not None:
                 blog_sentiment = self.analyze_sentiment(info.blog_content, model, tokenizer)
 
                 # 将sentiment写入数据库中
@@ -629,3 +602,153 @@ class CrawlerView(View):
                 [{data_point["text"]}] = 
 
                 """.strip()
+
+
+class DashboardView(View):
+    def post(self, request, action):
+        if action == 'get_card_info':
+            # 首页卡片信息
+            return self.get_card_info(request)
+        elif action == 'get_recent_blog_num':
+            # 获取最近7天微博数量
+            return self.get_recent_blog_num(request)
+        elif action == 'get_blog_num_group_by_keyword':
+            # 以关键词分组获取微博数量
+            return self.get_blog_num_group_by_keyword(request)
+        else:
+            return api_return_error('请求错误！', 120001)
+
+    def get_card_info(self, request):
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+
+        # 获取当天的总数量
+        today_total = BlogInfo.objects.filter(c_time__date=today).count()
+
+        # 获取前一天的总数量
+        yesterday_total = BlogInfo.objects.filter(c_time__date=yesterday).count()
+
+        # 计算总数量的增长率
+        if yesterday_total > 0:
+            total_growth_rate = ((today_total - yesterday_total) / yesterday_total) * 100
+        else:
+            total_growth_rate = float('inf') if today_total > 0 else 0
+
+        # 获取当天 sentiment 为 positive 的数量
+        today_positive = BlogInfo.objects.filter(c_time__date=today, sentiment='positive').count()
+
+        # 获取前一天 sentiment 为 positive 的数量
+        yesterday_positive = BlogInfo.objects.filter(c_time__date=yesterday, sentiment='positive').count()
+
+        # 计算 positive 数量的增长率
+        if yesterday_positive > 0:
+            positive_growth_rate = ((today_positive - yesterday_positive) / yesterday_positive) * 100
+        else:
+            positive_growth_rate = float('inf') if today_positive > 0 else 0
+
+        # 获取当天 sentiment 为 negative 的数量
+        today_negative = BlogInfo.objects.filter(c_time__date=today, sentiment='negative').count()
+
+        # 获取前一天 sentiment 为 negative 的数量
+        yesterday_negative = BlogInfo.objects.filter(c_time__date=yesterday, sentiment='negative').count()
+
+        # 计算 negative 数量的增长率
+        if yesterday_negative > 0:
+            negative_growth_rate = ((today_negative - yesterday_negative) / yesterday_negative) * 100
+        else:
+            negative_growth_rate = float('inf') if today_negative > 0 else 0
+
+        # 获取当前总数量
+        total_count_key_word = KeyWord.objects.count()
+
+        # 获取今天的数量
+        today_count_key_word = KeyWord.objects.filter(c_time__date=today).count()
+
+        # 计算昨天的数量
+        if today_count_key_word > 0:
+            yesterday_count_key_word = total_count_key_word - today_count_key_word
+            key_word_growth_rate = ((total_count_key_word - yesterday_count_key_word) / yesterday_count_key_word) * 100
+        else:
+            yesterday_count_key_word = total_count_key_word
+            key_word_growth_rate = 0
+
+        res_data = [
+            {
+                'type': "ip",
+                'title': "关键词",
+                'todayCount': total_count_key_word,
+                'yesterdayCount': yesterday_count_key_word,
+                'growthRate': key_word_growth_rate,
+                'granularityLabel': "日",
+            },
+            {
+                'type': "ip",
+                'title': "微博数量",
+                'todayCount': today_total,
+                'yesterdayCount': yesterday_total,
+                'growthRate': total_growth_rate,
+                'granularityLabel': "日",
+            },
+            {
+                'type': "ip",
+                'title': "正向微博数量",
+                'todayCount': today_positive,
+                'yesterdayCount': yesterday_positive,
+                'growthRate': positive_growth_rate,
+                'granularityLabel': "日",
+            },
+            {
+                'type': "ip",
+                'title': "负向微博数量",
+                'todayCount': today_negative,
+                'yesterdayCount': yesterday_negative,
+                'growthRate': negative_growth_rate,
+                'granularityLabel': "日",
+            },
+        ]
+
+        return api_return_success(res_data)
+
+    def get_recent_blog_num(self, request):
+        # 获取当前时间
+        now = timezone.now()
+        # 计算7天前的日期
+        seven_days_ago = now - timedelta(days=7)
+
+        # 查询最近7天创建的数据，并按日期分组
+        queryset = BlogInfo.objects.filter(c_time__gte=seven_days_ago) \
+            .annotate(date=Trunc('c_time', 'day')) \
+            .values('date') \
+            .annotate(count=Count('id')) \
+            .order_by('date')
+
+        # 输出结果
+        x_list = []
+        y_list = []
+        for item in queryset:
+            # 将 datetime 对象格式化为仅包含日期的字符串
+            date_str = item['date'].strftime("%Y-%m-%d")
+            x_list.append(date_str)
+            y_list.append(item['count'])
+
+        res_data = {
+            'x_list': x_list,
+            'y_list': y_list,
+        }
+
+        return api_return_success(res_data)
+
+    def get_blog_num_group_by_keyword(self, request):
+        top_eight_keywords = BlogInfo.objects.exclude(key_word__in=['', None]).values('key_word').annotate(
+            count=Count('id')).order_by('-count')[:8]
+
+        res_data = []
+        for keyword_count in top_eight_keywords:
+            print(f"Keyword: {keyword_count['key_word']}, Count: {keyword_count['count']}")
+            item = {
+                'value': keyword_count['count'],
+                'name': keyword_count['key_word'],
+            }
+            res_data.append(item)
+
+        return api_return_success(res_data)

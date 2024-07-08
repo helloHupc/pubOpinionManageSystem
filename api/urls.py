@@ -10,4 +10,5 @@ urlpatterns = [
     path('menus/routes', views.MenuRoutesView.as_view(), name='api-menu-routes'),
     path('key_word/<str:action>', views.KeyWordView.as_view(), name='api-key-word-action'),
     path('crawler/<str:action>', views.CrawlerView.as_view(), name='api-crawler-action'),
+    path('dashboard/<str:action>', views.DashboardView.as_view(), name='api-dashboard-action'),
 ]
