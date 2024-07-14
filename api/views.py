@@ -632,7 +632,7 @@ class DashboardView(View):
         if yesterday_total > 0:
             total_growth_rate = ((today_total - yesterday_total) / yesterday_total) * 100
         else:
-            total_growth_rate = float('inf') if today_total > 0 else 0
+            total_growth_rate = 0
 
         # 获取当天 sentiment 为 positive 的数量
         today_positive = BlogInfo.objects.filter(c_time__date=today, sentiment='positive').count()
@@ -644,7 +644,7 @@ class DashboardView(View):
         if yesterday_positive > 0:
             positive_growth_rate = ((today_positive - yesterday_positive) / yesterday_positive) * 100
         else:
-            positive_growth_rate = float('inf') if today_positive > 0 else 0
+            positive_growth_rate = 0
 
         # 获取当天 sentiment 为 negative 的数量
         today_negative = BlogInfo.objects.filter(c_time__date=today, sentiment='negative').count()
@@ -656,7 +656,7 @@ class DashboardView(View):
         if yesterday_negative > 0:
             negative_growth_rate = ((today_negative - yesterday_negative) / yesterday_negative) * 100
         else:
-            negative_growth_rate = float('inf') if today_negative > 0 else 0
+            negative_growth_rate = 0
 
         # 获取当前总数量
         total_count_key_word = KeyWord.objects.count()
@@ -707,6 +707,7 @@ class DashboardView(View):
             },
         ]
 
+        print(res_data)
         return api_return_success(res_data)
 
     def get_recent_blog_num(self, request):
