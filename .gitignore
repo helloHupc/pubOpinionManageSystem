@@ -1,8 +1,6 @@
 .gitignore
 venv
 .idea
-settings.py
-db.sqlite3
 pubOpinionManageSystem/__pycache__/
 login/__pycache__/
 api/__pycache__/
