@@ -9,7 +9,7 @@ from django.db.models import Count, Q
 from django.db.models.functions import Trunc
 from django.db import models
 from django.utils.dateparse import parse_datetime
-from api.models import KeyWord, BlogInfo
+from api.models import KeyWord, BlogInfo, DynamicDataset
 import requests
 from lxml import etree
 import re
@@ -20,6 +20,9 @@ from tqdm import tqdm
 import os
 from django.utils import timezone
 from datetime import timedelta, datetime
+import csv
+import io
+from django.http import HttpResponse
 
 
 def generate_uuid():
@@ -121,6 +124,31 @@ class MenuRoutesView(View):
                         'name': "DataManagePage",
                         'meta': {
                             'title': "数据管理",
+                            'icon': "document",
+                            'hidden': False,
+                            'roles': ["ADMIN"],
+                        },
+                    },
+                ],
+            },
+            {
+                'path': "/dynamic-dataset",
+                'component': "Layout",
+                'name': "DynamicDataset",
+                'redirect': "/dynamic-dataset/page",
+                'meta': {
+                    'title': "动态数据集管理",
+                    'icon': "document",
+                    'hidden': False,
+                    'roles': ["ADMIN"],
+                },
+                'children': [
+                    {
+                        'path': "page",
+                        'component': "dynamic-dataset/page",
+                        'name': "DynamicDatasetPage",
+                        'meta': {
+                            'title': "动态数据集管理",
                             'icon': "document",
                             'hidden': False,
                             'roles': ["ADMIN"],
@@ -338,7 +366,7 @@ class CrawlerView(View):
 
     def get_weibo_topic(self, url, key_word, key_word_id):
         headers_com = {
-            'Cookie': 'SINAGLOBAL=7156742576788.246.1720268063899; ALF=1722860382; SUB=_2A25LjUYODeRhGeBN7FQY9SvLyjyIHXVo48fGrDV8PUJbkNANLXHYkW1NRD6xD3jFsW2dvujqOWF1j0AykYPZYhIj; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WhE0IkibUYGcoJEh7a4Rs6S5JpX5KzhUgL.Foq0S0q4SK-NeK52dJLoIEQLxKnL1KqL1hMLxKnL1KqL1hMLxKBLBonL1h5LxKMLB-eL1K2Eeh5Neh-t; _s_tentry=-; Apache=8446034582190.39.1720448560517; ULV=1720448560571:2:2:1:8446034582190.39.1720448560517:1720268063934; XSRF-TOKEN=Pg6KrIpzlZcRzF6I53I18-s-; WBPSESS=L4L_z_JzzEZTdbPW6DHu3qcO6gE3Lb6vR3pkRK01o1MF6kV4yDsMIIZ2Efr1mLZ5b-0wFOGyRoNSsuA4kxbnxSLEXNbk4l7MIaE0MPgZoj0N1n7HTWY4hPdHoaH2KGyb',
+            'Cookie': 'SINAGLOBAL=7156742576788.246.1720268063899; SCF=Al7ljahTPnneEMetgfZh8wLJaooFa1luU6A7LmDJAKc5aK-mjaCWhQpzS9FHus902kWVctpQg8ObDyBoQdStsGw.; SUB=_2A25L88dQDeRhGeRG6lYT8SnNyjuIHXVpcUaYrDV8PUNbmtANLUjhkW9NTfOQzyJ9u6PL1KSLG6PtKZFjFTBAqVS5; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WWB-A_3WoZKGd4zMIkHDoTj5JpX5KzhUgL.FozReKBEeKMpeKM2dJLoIXnLxKBLB.BL1K-LxK-LBKBL1hBLxK-LB-qLB.zLxKqL1h.LB.-LxKBLBonL1h5LxKML1h.L1hMLxK-LB--L1h.LxK-LB--L1h2t; ALF=02_1730102272; _s_tentry=passport.weibo.com; Apache=5945913879617.597.1727510274582; ULV=1727510274632:7:1:1:5945913879617.597.1727510274582:1723287009691',
             'user-agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0"
         }
         page = 0
@@ -407,8 +435,11 @@ class CrawlerView(View):
                 add_data['publish_time'] = publish_time
 
                 # 微博内容
-                blog_content = html.xpath('//div[@class="card-wrap"][' + str(
-                    i) + ']/div[@class="card"]/div[1]/div[2]/p')[0].text.strip()
+                # blog_content = html.xpath('//div[@class="card-wrap"][' + str(
+                #     i) + ']/div[@class="card"]/div[1]/div[2]/p')[0].text.strip()
+                blog_content = ''.join(html.xpath(
+                    '//div[@class="card-wrap"][' + str(i) + ']/div[@class="card"]/div[1]/div[2]/p/text()')).strip()
+
                 print('blog_content', blog_content)
                 add_data['blog_content'] = blog_content
 
@@ -436,7 +467,7 @@ class CrawlerView(View):
                     pageA = html.xpath('//*[@id="pl_feedlist_index"]/div[5]/div/a')[0].text
                     print(pageA)
                     pageCount = pageCount + 1
-                elif pageCount == 10:
+                elif pageCount == 50:
                     print('抓取完 没有下一页了')
                     break
                 else:
@@ -525,6 +556,7 @@ class CrawlerView(View):
                 'like_count': info.like_count,
                 'publish_time': info.publish_time,
                 'blog_content': info.blog_content,
+                'is_add_dynamic_dataset': info.is_add_dynamic_dataset,
                 'blog_sentiment': blog_sentiment,
                 'createTime': info.c_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'updateTime': info.u_time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -753,3 +785,181 @@ class DashboardView(View):
             res_data.append(item)
 
         return api_return_success(res_data)
+
+
+class BlogInfoView(View):
+    def post(self, request, action):
+        if action == 'update_senti':
+            # 更新微博的情感
+            return self.update_senti(request)
+        elif action == 'insert_to_dynamic_dataset':
+            # 将微博移动到动态微调数据集
+            return self.insert_to_dynamic_dataset(request)
+        elif action == 'get_dynamic_dataset_list':
+            # 获取动态微调数据集
+            return self.get_dynamic_dataset_list(request)
+        elif action == 'export_dynamic_dataset_csv':
+            # 导出动态微调数据集
+            return self.export_dynamic_dataset_csv(request)
+        else:
+            return api_return_error('请求错误！', 130001)
+
+
+
+    def update_senti(self, request):
+        data = json.loads(request.body)
+        print('update_senti data', data)
+
+        id = data.get('id')
+        senti = data.get('senti')
+        if id is None or senti is None:
+            return api_return_error('数据异常！', 130002)
+
+        blog_obj = BlogInfo.objects.get(id=id)
+        blog_obj.sentiment = data.get('sentiment', senti)
+        # 保存对象
+        blog_obj.save()
+
+        return api_return_success({})
+
+    def insert_to_dynamic_dataset(self, request):
+        data = json.loads(request.body)
+        print('move_to_dynamic_dataset', data)
+
+        ids = data.get('ids')
+        if ids is None:
+            return api_return_error('数据异常！', 130002)
+
+        ids_list = ids.split(',')
+        for data_id in ids_list:
+            print('data_id', data_id)
+            blog_obj = BlogInfo.objects.get(id=data_id)
+
+            add_data = {}
+            add_data['blog_id'] = blog_obj.blog_id
+            add_data['key_word'] = blog_obj.key_word
+            add_data['blog_content'] = blog_obj.blog_content
+            add_data['sentiment'] = blog_obj.sentiment
+            add_data['type'] = blog_obj.type
+
+            check_exist = DynamicDataset.objects.filter(blog_id=blog_obj.blog_id).exists()
+
+            # 写入动态数据集
+            if check_exist:
+                return api_return_error('数据已存在！', 130003)
+
+            DynamicDataset.objects.create(**add_data)
+
+            # 更新微博数据表状态
+            blog_obj.is_add_dynamic_dataset = 1
+            # 保存对象
+            blog_obj.save()
+
+        return api_return_success({})
+
+    def get_dynamic_dataset_list(self, request):
+        data = json.loads(request.body)
+        print('data', data)
+
+        page = data.get('pageNum', 1)
+        page_size = data.get('pageSize', 10)
+        # 获取搜索条件
+        start_time = data.get('startTime')
+        end_time = data.get('endTime')
+
+        # 初始化查询集
+        queryset = DynamicDataset.objects.all()
+
+        # 根据开始和结束时间过滤
+        if start_time and end_time:
+            start_datetime = parse_datetime(start_time)
+            end_datetime = parse_datetime(end_time)
+            if start_datetime and end_datetime and start_datetime <= end_datetime:
+                queryset = queryset.filter(Q(c_time__gte=start_datetime) & Q(c_time__lte=end_datetime))
+            else:
+                # 返回错误信息，提示时间范围不正确
+                return api_return_error('时间范围不正确！', 110003)
+
+        # 执行查询
+        dynamicDatasetList = queryset
+        paginator = Paginator(dynamicDatasetList, page_size)
+
+        try:
+            dynamic_dataset_page = paginator.page(page)
+        except PageNotAnInteger:
+            dynamic_dataset_page = paginator.page(1)
+        except EmptyPage:
+            dynamic_dataset_page = paginator.page(paginator.num_pages)
+
+        data_list = []
+        for info in dynamic_dataset_page:
+            print('dynamic_dataset.sentiment', info.sentiment)
+            print('dynamic_dataset.blog_content', info.blog_content)
+
+            data_list.append({
+                'id': info.id,
+                'key_word': info.key_word,
+                'blog_id': info.blog_id,
+                'blog_content': info.blog_content,
+                'blog_sentiment': info.sentiment,
+                'is_use': info.is_use,
+                'createTime': info.c_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'updateTime': info.u_time.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        res_data = {
+            'total': paginator.count,
+            'pageNum': dynamic_dataset_page.number,
+            'pageSize': page_size,
+            'list': data_list
+        }
+
+        return api_return_success(res_data)
+
+    def export_dynamic_dataset_csv(self, request):
+        data = json.loads(request.body)
+        print('export_dynamic_dataset_csv data', data)
+
+        ids = data.get('ids')
+        if ids is None:
+            return api_return_error('数据异常！', 130002)
+
+        data_list = []
+
+        ids_list = ids.split(',')
+        for data_id in ids_list:
+            print('data_id', data_id)
+            info = DynamicDataset.objects.get(id=data_id)
+
+            data_list.append({
+                'sentiment': info.sentiment,
+                'blog_content': info.blog_content,
+            })
+
+            # 更新数据表状态
+            info.is_use = 1
+            # 保存对象
+            info.save()
+
+        # 获取当前时间并格式化为 YYYYMMDD_HHMMSS 形式
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_name = f'blogsentiment{timestamp}.csv'
+
+        # 使用 io.StringIO 创建一个内存中的文件对象
+        output = io.StringIO()
+
+        # 创建 CSV writer，只写 sentiment 和 blog_content 字段
+        writer = csv.DictWriter(output, fieldnames=['sentiment', 'blog_content'])
+        writer.writeheader()
+
+        # 将 data_list 写入 CSV
+        for row in data_list:
+            writer.writerow(row)
+
+        # 将内容写入 HttpResponse
+        response = HttpResponse(content_type='text/csv;charset=utf-8')
+
+        # 使用 utf-8 编码返回 CSV 内容
+        response.write(output.getvalue().encode('utf-8').decode('utf-8'))
+        response['Content-Disposition'] = f'attachment;filename={file_name}'
+
+        return response

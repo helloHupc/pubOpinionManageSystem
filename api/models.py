@@ -38,6 +38,7 @@ class BlogInfo(models.Model):
     blog_content = models.TextField(null=True, blank=True)
     sentiment = models.CharField(max_length=256, default='')
     type = models.CharField(max_length=30, default='weibo')
+    is_add_dynamic_dataset = models.IntegerField(default=0)
     c_time = models.DateTimeField(auto_now_add=True)
     u_time = models.DateTimeField(auto_now=True)
 
@@ -49,3 +50,23 @@ class BlogInfo(models.Model):
         ordering = ["-c_time", "-u_time"]
         verbose_name = "微博博文"
         verbose_name_plural = "微博博文"
+
+
+class DynamicDataset(models.Model):
+    blog_id = models.CharField(max_length=256)
+    key_word = models.CharField(max_length=256, default='')
+    blog_content = models.TextField(null=True, blank=True)
+    sentiment = models.CharField(max_length=256, default='')
+    type = models.CharField(max_length=30, default='weibo')
+    is_use = models.IntegerField(default=0)
+    c_time = models.DateTimeField(auto_now_add=True)
+    u_time = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.blog_content
+
+    class Meta:
+
+        ordering = ["-c_time", "-u_time"]
+        verbose_name = "动态数据集"
+        verbose_name_plural = "动态数据集"

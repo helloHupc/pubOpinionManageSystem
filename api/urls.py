@@ -11,4 +11,5 @@ urlpatterns = [
     path('key_word/<str:action>', views.KeyWordView.as_view(), name='api-key-word-action'),
     path('crawler/<str:action>', views.CrawlerView.as_view(), name='api-crawler-action'),
     path('dashboard/<str:action>', views.DashboardView.as_view(), name='api-dashboard-action'),
+    path('blog_info/<str:action>', views.BlogInfoView.as_view(), name='api-blog-info-action'),
 ]

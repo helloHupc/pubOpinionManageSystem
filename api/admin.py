@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import KeyWord, BlogInfo
+from .models import KeyWord, BlogInfo, DynamicDataset
 
 
 class BlogInfoAdmin(admin.ModelAdmin):
@@ -10,3 +10,4 @@ class BlogInfoAdmin(admin.ModelAdmin):
 
 admin.site.register(KeyWord)
 admin.site.register(BlogInfo)
+admin.site.register(DynamicDataset)
