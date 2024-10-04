@@ -4,7 +4,7 @@ from django.views import View
 from login.models import UserProfile
 from django.contrib.auth.hashers import check_password
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from api.utils import encrypt_user_id, api_return_error, api_return_success
+from api.utils import encrypt_user_id, api_return_error, api_return_success, decrypt_user_id
 from django.db.models import Count, Q
 from django.db.models.functions import Trunc
 from django.db import models
@@ -58,7 +58,8 @@ class LoginView(View):
 
 
 class UserInfoView(View):
-    def get(self, request, user_id):
+    def get(self, request, user_id_token):
+        user_id = decrypt_user_id(user_id_token)
         check_user = UserProfile.objects.filter(id=user_id).first()
         print(check_user)
 
